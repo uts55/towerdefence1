@@ -10,6 +10,12 @@ public class AutoCannon : MonoBehaviour
     private float fireCooldown = 0f;    // 다음 발사까지 남은 시간
     private Transform targetEnemy = null; // 현재 조준 중인 적
 
+    public float baseDamage = 5f; // 발사체 기본 데미지 (Projectile.cs에서 가져와도 됨)
+    public float baseFireRate = 2f; // 기본 발사 속도
+
+    private float currentDamageMultiplier = 1f; // 현재 공격력 배율
+    private float currentFireRateMultiplier = 1f; // 현재 발사 속도 배율
+
     void Update()
     {
         // 쿨다운 감소
@@ -32,6 +38,12 @@ public class AutoCannon : MonoBehaviour
             fireCooldown = 1f / fireRate;
             // 발사 후 즉시 새로운 적을 찾도록 targetEnemy를 null로 설정 (선택적: 계속 같은 적을 쏠 수도 있음)
             // targetEnemy = null;
+        }
+
+        if (targetEnemy != null && fireCooldown <= 0)
+        {
+            Fire();
+            fireCooldown = 1f / (baseFireRate * currentFireRateMultiplier); // 배율 적용
         }
     }
 
@@ -78,12 +90,12 @@ public class AutoCannon : MonoBehaviour
 
         // 생성된 발사체의 Projectile 스크립트 가져오기
         Projectile projectileScript = projectileGO.GetComponent<Projectile>();
+
         if (projectileScript != null)
         {
-            // 발사체 방향 설정
             projectileScript.SetDirection(direction);
-            // 발사체 데미지 설정 (필요하다면 무기 스탯에 따라 변경)
-            // projectileScript.damage = weaponDamage;
+            // 현재 배율 적용된 데미지 설정
+            projectileScript.damage = baseDamage * currentDamageMultiplier; // 배율 적용
         }
         else
         {
@@ -99,5 +111,19 @@ public class AutoCannon : MonoBehaviour
     {
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRange);
+    }
+
+    // 공격력 배율 증가 함수 (LevelManager에서 호출)
+    public void IncreaseDamageMultiplier(float amount)
+    {
+        currentDamageMultiplier += amount; // 0.1 (10%) 같은 값이 더해짐
+        Debug.Log($"무기 공격력 배율 증가! 현재: {currentDamageMultiplier * 100}%");
+    }
+
+    // 발사 속도 배율 증가 함수 (LevelManager에서 호출)
+    public void IncreaseFireRateMultiplier(float amount)
+    {
+        currentFireRateMultiplier += amount;
+        Debug.Log($"무기 발사 속도 배율 증가! 현재: {currentFireRateMultiplier * 100}%");
     }
 }

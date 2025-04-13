@@ -1,9 +1,9 @@
 using UnityEngine;
-using UnityEngine.UI; // UI 요소 사용을 위해 추가 (나중에 필요)
+using UnityEngine.UI;
+using TMPro;
 
 public class LevelManager : MonoBehaviour
 {
-    // --- 싱글톤 구현 시작 ---
     public static LevelManager Instance { get; private set; } // 정적 인스턴스 속성
 
     private void Awake()
@@ -20,8 +20,6 @@ public class LevelManager : MonoBehaviour
             // DontDestroyOnLoad(gameObject);
         }
     }
-    // --- 싱글톤 구현 끝 ---
-
 
     public int currentLevel = 1;
     public int currentXP = 0;
@@ -30,19 +28,45 @@ public class LevelManager : MonoBehaviour
 
     public GameObject levelUpPanel;
 
+    // UI 참조 변수
+    public TextMeshProUGUI levelText;
+    public Slider xpSlider;
+    public TextMeshProUGUI timerText;
+
+    // 타이머 변수
+    private float survivalTime = 0f;
+
+    public System.Collections.Generic.List<UpgradeData> availableUpgrades; // 보유 중인 모든 업그레이드 데이터 리스트 (Inspector에서 연결)
+    public UpgradeData[] currentUpgradeOptions = new UpgradeData[3]; // 현재 제시된 3가지 옵션 저장용 배열
+
+    // UI 요소 참조 (업그레이드 버튼 및 내용 표시용)
+    public Button[] upgradeButtons; // 업그레이드 버튼 3개 (Inspector에서 연결)
+    public TextMeshProUGUI[] upgradeButtonTitles; // 버튼 제목 텍스트 (Inspector에서 연결)
+    public TextMeshProUGUI[] upgradeButtonDescriptions; // 버튼 설명 텍스트 (Inspector에서 연결)
+    public Image[] upgradeButtonIcons; // 아이콘 이미지
+
     void Start()
     {
-        if (levelUpPanel != null)
+        if (levelUpPanel != null) levelUpPanel.SetActive(false);
+        UpdateLevelUI(); // 초기 UI 업데이트
+        UpdateXPUI();    // 초기 UI 업데이트
+        UpdateTimerUI(); // 초기 UI 업데이트
+    }
+
+    void Update()
+    {
+        // 게임 시간이 흐를 때만 (레벨업 중 아닐 때)
+        if (Time.timeScale > 0)
         {
-            levelUpPanel.SetActive(false);
+            survivalTime += Time.deltaTime; // 생존 시간 증가
+            UpdateTimerUI(); // 매 프레임 타이머 UI 업데이트
         }
-        Debug.Log($"Level: {currentLevel}, XP: {currentXP}/{xpToNextLevel}");
     }
 
     public void GainExperience(int amount)
     {
         currentXP += amount;
-        Debug.Log($"XP 획득: +{amount} / 현재: {currentXP}/{xpToNextLevel}");
+        UpdateXPUI(); // UI 업데이트
         CheckLevelUp();
     }
 
@@ -53,22 +77,124 @@ public class LevelManager : MonoBehaviour
             currentXP -= xpToNextLevel;
             currentLevel++;
             xpToNextLevel = Mathf.RoundToInt(xpToNextLevel * xpMultiplier);
-            Debug.Log($"레벨 업! 현재 레벨: {currentLevel}, 다음 필요 경험치: {xpToNextLevel}");
+            UpdateLevelUI(); // UI 업데이트
+            UpdateXPUI();    // UI 업데이트 (최대값, 현재값 모두 변경됨)
             HandleLevelUpRewards();
+        }
+    }
+
+    // --- UI 업데이트 함수들 ---
+    void UpdateLevelUI()
+    {
+        if (levelText != null) levelText.text = "Level: " + currentLevel;
+    }
+
+    void UpdateXPUI()
+    {
+        if (xpSlider != null)
+        {
+            xpSlider.maxValue = xpToNextLevel;
+            xpSlider.value = currentXP;
+        }
+    }
+
+    void UpdateTimerUI()
+    {
+        if (timerText != null)
+        {
+            // 시간을 분:초 형식으로 변환
+            int minutes = Mathf.FloorToInt(survivalTime / 60f);
+            int seconds = Mathf.FloorToInt(survivalTime % 60f);
+            timerText.text = string.Format("Time: {0:00}:{1:00}", minutes, seconds);
         }
     }
 
     void HandleLevelUpRewards()
     {
         Time.timeScale = 0f;
-        if (levelUpPanel != null)
+
+        if (levelUpPanel != null && availableUpgrades.Count > 0 && upgradeButtons.Length >= 3)
         {
             levelUpPanel.SetActive(true);
-            Debug.Log("레벨업! 게임 일시정지됨. 업그레이드를 선택하세요.");
+            // 3개의 랜덤 업그레이드 선택 (중복 없이)
+            System.Collections.Generic.List<UpgradeData> tempList = new System.Collections.Generic.List<UpgradeData>(availableUpgrades);
+            for (int i = 0; i < 3; i++)
+            {
+                if (tempList.Count == 0) // 선택할 업그레이드가 더 없으면
+                {
+                    currentUpgradeOptions[i] = null; // 옵션 비우기
+                    upgradeButtons[i].gameObject.SetActive(false); // 버튼 비활성화
+                    continue;
+                }
+                int randomIndex = Random.Range(0, tempList.Count);
+                currentUpgradeOptions[i] = tempList[randomIndex]; // 옵션 저장
+                tempList.RemoveAt(randomIndex); // 중복 선택 방지
+
+                // UI 업데이트
+                upgradeButtons[i].gameObject.SetActive(true); // 버튼 활성화
+                if (upgradeButtonTitles.Length > i && upgradeButtonTitles[i] != null)
+                    upgradeButtonTitles[i].text = currentUpgradeOptions[i].upgradeName;
+                if (upgradeButtonDescriptions.Length > i && upgradeButtonDescriptions[i] != null)
+                    upgradeButtonDescriptions[i].text = currentUpgradeOptions[i].description;
+                if (upgradeButtonIcons.Length > i && upgradeButtonIcons[i] != null && currentUpgradeOptions[i].icon != null)
+                    upgradeButtonIcons[i].sprite = currentUpgradeOptions[i].icon;
+
+                // 버튼 클릭 이벤트 설정 (중요!) - 각 버튼이 어떤 인덱스를 선택했는지 알려주도록 설정
+                int buttonIndex = i; // 람다식/델리게이트에서 클로저 문제를 피하기 위해 지역 변수 사용
+                upgradeButtons[i].onClick.RemoveAllListeners(); // 기존 리스너 제거
+                upgradeButtons[i].onClick.AddListener(() => SelectUpgrade(buttonIndex));
+            }
         }
         else
         {
-            Debug.LogWarning("Level Up Panel이 LevelManager에 할당되지 않았습니다!");
+            Debug.LogWarning("Level Up Panel, 업그레이드 목록 또는 버튼 설정이 부족합니다!");
+            // ResumeGameAfterLevelUp(); // 선택지 없으면 바로 재개할 수도 있음
+        }
+    }
+    // 업그레이드 버튼 클릭 시 호출될 함수
+    public void SelectUpgrade(int index)
+    {
+        if (index < 0 || index >= currentUpgradeOptions.Length || currentUpgradeOptions[index] == null)
+        {
+            Debug.LogError("잘못된 업그레이드 선택 인덱스입니다.");
+            ResumeGameAfterLevelUp(); // 문제가 있으면 그냥 재개
+            return;
+        }
+
+        UpgradeData selectedUpgrade = currentUpgradeOptions[index];
+        ApplyUpgrade(selectedUpgrade); // 선택된 업그레이드 적용 함수 호출
+
+        ResumeGameAfterLevelUp(); // 게임 재개
+    }
+
+    // 선택된 업그레이드를 실제로 적용하는 함수
+    void ApplyUpgrade(UpgradeData upgrade)
+    {
+        Debug.Log($"업그레이드 적용: {upgrade.upgradeName}");
+        switch (upgrade.type)
+        {
+            case UpgradeType.WeaponDamage:
+                // TODO: AutoCannon 또는 WeaponManager에 공격력 증가 함수 호출
+                // 예: GetComponent<AutoCannon>().IncreaseDamage(upgrade.value);
+                AutoCannon cannon = GetComponent<AutoCannon>(); // LevelManager가 Castle에 붙어있다고 가정
+                if (cannon != null) cannon.IncreaseDamageMultiplier(upgrade.value); // 곱연산 방식 예시
+                else Debug.LogWarning("AutoCannon 컴포넌트를 찾을 수 없습니다.");
+                break;
+            case UpgradeType.WeaponFireRate:
+                // TODO: AutoCannon 또는 WeaponManager에 발사 속도 증가 함수 호출
+                AutoCannon cannonFR = GetComponent<AutoCannon>();
+                if (cannonFR != null) cannonFR.IncreaseFireRateMultiplier(upgrade.value);
+                else Debug.LogWarning("AutoCannon 컴포넌트를 찾을 수 없습니다.");
+                break;
+            case UpgradeType.CastleMaxHealth:
+                CastleHealth health = GetComponent<CastleHealth>(); // LevelManager가 Castle에 붙어있다고 가정
+                if (health != null) health.IncreaseMaxHealth(upgrade.value);
+                else Debug.LogWarning("CastleHealth 컴포넌트를 찾을 수 없습니다.");
+                break;
+            // ... 다른 종류의 업그레이드 처리 ...
+            default:
+                Debug.LogWarning($"아직 처리되지 않은 업그레이드 타입: {upgrade.type}");
+                break;
         }
     }
 

@@ -1,33 +1,33 @@
 using UnityEngine;
-using UnityEngine.SceneManagement; // 씬 관리를 위해 추가 (게임 오버 후 재시작 등)
+using UnityEngine.SceneManagement;
+using UnityEngine.UI; // 추가
 
 public class CastleHealth : MonoBehaviour
 {
-    public float maxHealth = 100f; // 성의 최대 체력 (Inspector에서 조절 가능)
-    public float currentHealth;    // 현재 체력
+    public float maxHealth = 100f;
+    public float currentHealth;
+    public Slider healthSlider; // 추가: 체력바 슬라이더 참조
 
-    // 게임 시작 시 호출되는 함수
     void Start()
     {
-        // 현재 체력을 최대 체력으로 초기화
         currentHealth = maxHealth;
-        Debug.Log("성 체력 초기화: " + currentHealth + "/" + maxHealth); // 초기 상태 확인용 로그
+        // 슬라이더 초기 설정
+        if (healthSlider != null)
+        {
+            healthSlider.maxValue = maxHealth;
+            healthSlider.value = currentHealth;
+        }
+        else Debug.LogWarning("Health Slider가 CastleHealth에 할당되지 않았습니다.");
+        // Debug.Log("성 체력 초기화..."); // 로그는 이제 UI로 확인 가능하므로 줄여도 됨
     }
 
-    // 외부에서 호출하여 성에 피해를 주는 함수
     public void TakeDamage(float amount)
     {
-        // 받은 피해량만큼 현재 체력 감소
         currentHealth -= amount;
-        Debug.Log("성이 피해를 입음! 현재 체력: " + currentHealth + "/" + maxHealth); // 피해 확인용 로그
+        UpdateHealthUI(); // UI 업데이트 호출
+        // Debug.Log("성이 피해를 입음...");
 
-        // TODO: 여기에 체력이 감소했을 때 시각적 효과 추가 (예: 성 색상 깜빡임)
-
-        // 체력이 0 이하가 되었는지 확인
-        if (currentHealth <= 0)
-        {
-            Die(); // 성 파괴 처리 함수 호출
-        }
+        if (currentHealth <= 0) Die();
     }
 
     // 성이 파괴되었을 때 처리
@@ -45,15 +45,34 @@ public class CastleHealth : MonoBehaviour
         // SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
-    // (선택 사항) 나중에 체력 회복 아이템 등을 위해 추가할 수 있는 함수
-    public void Heal(float amount)
+    
+    public void Heal(float amount) // 있다면
     {
         currentHealth += amount;
-        // 현재 체력이 최대 체력을 넘지 않도록 제한
-        if (currentHealth > maxHealth)
+        if (currentHealth > maxHealth) currentHealth = maxHealth;
+        UpdateHealthUI(); // UI 업데이트 호출
+        // Debug.Log("성이 회복됨...");
+    }
+
+    // 체력 UI 업데이트 함수
+    void UpdateHealthUI()
+    {
+         if (healthSlider != null)
+         {
+            healthSlider.value = currentHealth;
+         }
+    }
+
+    // (선택적) 최대 체력 증가 업그레이드를 위한 함수
+    public void IncreaseMaxHealth(float amount)
+    {
+        maxHealth += amount;
+        currentHealth += amount; // 최대 체력 증가 시 현재 체력도 같이 증가시켜줌
+        if (healthSlider != null)
         {
-            currentHealth = maxHealth;
+            healthSlider.maxValue = maxHealth; // 슬라이더 최대값 업데이트
         }
-        Debug.Log("성이 회복됨! 현재 체력: " + currentHealth + "/" + maxHealth);
+        UpdateHealthUI(); // UI 업데이트
+        Debug.Log($"최대 체력 증가! 현재: {currentHealth}/{maxHealth}");
     }
 }
