@@ -16,4 +16,4 @@ MonoBehaviour:
   upgradeName: IncreaseFireRate_01
   description: test2
   value: 2
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 1f214a08beb4d054f96fc2adec8cab3c, type: 3}

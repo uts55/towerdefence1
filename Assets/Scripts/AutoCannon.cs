@@ -2,7 +2,6 @@ using UnityEngine;
 
 public class AutoCannon : MonoBehaviour
 {
-    public GameObject projectilePrefab; // 발사할 발사체 프리팹 (Inspector에서 연결)
     public Transform firePoint;         // 발사체가 생성될 위치 (없으면 성 위치에서 발사)
     public float fireRate = 2f;         // 발사 속도 (초당 발사 횟수)
     public float attackRange = 8f;      // 공격 사거리
@@ -73,35 +72,34 @@ public class AutoCannon : MonoBehaviour
 
     void Fire()
     {
-        if (projectilePrefab == null || targetEnemy == null) return; // 예외 처리
+        if (targetEnemy == null) return; // 예외 처리
 
-        // 발사 위치 결정 (firePoint가 설정되어 있으면 거기서, 아니면 성 위치에서)
         Vector3 spawnPosition = (firePoint != null) ? firePoint.position : transform.position;
-
-        // 발사 방향 계산 (적 방향)
         Vector2 direction = (targetEnemy.position - spawnPosition).normalized;
 
         // 발사체 생성
-        GameObject projectileGO = Instantiate(projectilePrefab, spawnPosition, Quaternion.identity);
+        GameObject projectileGO = ObjectPooler.Instance.SpawnFromPool("Projectile", spawnPosition, Quaternion.identity);
 
         // 발사체의 회전 설정
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg; // 방향 벡터를 각도로 변환
         projectileGO.transform.rotation = Quaternion.Euler(0, 0, angle); // Z축 기준으로 회전
 
-        // 생성된 발사체의 Projectile 스크립트 가져오기
-        Projectile projectileScript = projectileGO.GetComponent<Projectile>();
-
-        if (projectileScript != null)
+        if (projectileGO != null)
         {
-            projectileScript.SetDirection(direction);
-            // 현재 배율 적용된 데미지 설정
-            projectileScript.damage = baseDamage * currentDamageMultiplier; // 배율 적용
+            Projectile projectileScript = projectileGO.GetComponent<Projectile>();
+            if (projectileScript != null)
+            {
+                projectileScript.SetDirection(direction);
+                projectileScript.damage = baseDamage * currentDamageMultiplier;
+            }
+            else Debug.LogError("Spawned Projectile is missing Projectile script!");
         }
         else
         {
-            Debug.LogError("생성된 Projectile 프리팹에 Projectile 스크립트가 없습니다!");
+            // 풀 비었거나 오류 처리
+            // Debug.LogError("Failed to spawn projectile from pool!");
         }
-
+        
         // (선택적) 발사 효과음 재생
         // AudioSource.PlayClipAtPoint(fireSound, spawnPosition);
     }

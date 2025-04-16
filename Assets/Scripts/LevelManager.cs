@@ -45,6 +45,9 @@ public class LevelManager : MonoBehaviour
     public TextMeshProUGUI[] upgradeButtonDescriptions; // 버튼 설명 텍스트 (Inspector에서 연결)
     public Image[] upgradeButtonIcons; // 아이콘 이미지
 
+    public AutoCannon targetCannon; // Castle의 AutoCannon 컴포넌트를 연결할 변수
+    public CastleHealth targetCastleHealth; // Castle의 CastleHealth 컴포넌트를 연결할 변수
+
     void Start()
     {
         if (levelUpPanel != null) levelUpPanel.SetActive(false);
@@ -174,21 +177,15 @@ public class LevelManager : MonoBehaviour
         switch (upgrade.type)
         {
             case UpgradeType.WeaponDamage:
-                // TODO: AutoCannon 또는 WeaponManager에 공격력 증가 함수 호출
-                // 예: GetComponent<AutoCannon>().IncreaseDamage(upgrade.value);
-                AutoCannon cannon = GetComponent<AutoCannon>(); // LevelManager가 Castle에 붙어있다고 가정
-                if (cannon != null) cannon.IncreaseDamageMultiplier(upgrade.value); // 곱연산 방식 예시
+                if (targetCannon != null) targetCannon.IncreaseDamageMultiplier(upgrade.value);
                 else Debug.LogWarning("AutoCannon 컴포넌트를 찾을 수 없습니다.");
                 break;
             case UpgradeType.WeaponFireRate:
-                // TODO: AutoCannon 또는 WeaponManager에 발사 속도 증가 함수 호출
-                AutoCannon cannonFR = GetComponent<AutoCannon>();
-                if (cannonFR != null) cannonFR.IncreaseFireRateMultiplier(upgrade.value);
+                if (targetCannon != null) targetCannon.IncreaseFireRateMultiplier(upgrade.value);
                 else Debug.LogWarning("AutoCannon 컴포넌트를 찾을 수 없습니다.");
                 break;
             case UpgradeType.CastleMaxHealth:
-                CastleHealth health = GetComponent<CastleHealth>(); // LevelManager가 Castle에 붙어있다고 가정
-                if (health != null) health.IncreaseMaxHealth(upgrade.value);
+                if (targetCastleHealth != null) targetCastleHealth.IncreaseMaxHealth(upgrade.value);
                 else Debug.LogWarning("CastleHealth 컴포넌트를 찾을 수 없습니다.");
                 break;
             // ... 다른 종류의 업그레이드 처리 ...

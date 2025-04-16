@@ -6,6 +6,7 @@ public class Enemy : MonoBehaviour
     public float health = 10f;   // 적의 체력
     public float damage = 1f;    // 적이 성에 주는 피해량
     public int experienceValue = 1; // 이 적을 처치했을 때 주는 경험치
+    public float initialHealth = 10f; // 초기 체력값 저장 (재사용 시 필요)
 
     private Transform targetCastle; // 추적할 성의 Transform
 
@@ -55,29 +56,44 @@ public class Enemy : MonoBehaviour
         // if (other.CompareTag("Projectile")) { ... }
     }
 
+    void OnEnable()
+    {
+        // 상태 초기화 (재사용될 때마다 호출됨)
+        health = initialHealth; // 체력을 초기값으로 리셋!
+        // TODO: 필요한 다른 상태들도 여기서 초기화 (예: 이동 속도 변화가 있었다면 등)
+        // targetCastle은 Start에서 찾으므로 보통은 괜찮음
+    }
 
     public void TakeDamage(float amount)
     {
         health -= amount;
         if (health <= 0)
         {
-            Die();
+            if (gameObject.activeSelf) // 이미 비활성화 중이면 Die() 중복 호출 방지
+            {
+               Die();
+            }
         }
     }
 
     void Die()
     {
-        // LevelManager 인스턴스를 통해 경험치 획득 함수 호출
+        // LevelManager 경험치 지급은 그대로 유지
         if (LevelManager.Instance != null)
         {
             LevelManager.Instance.GainExperience(experienceValue);
         }
-        else
-        {
-            Debug.LogWarning("LevelManager 인스턴스를 찾을 수 없습니다. 경험치가 지급되지 않습니다.");
-        }
 
-        // TODO: 죽음 애니메이션, 아이템 드롭(경험치 등) 로직 추가
-        Destroy(gameObject);
+        // Destroy(gameObject) 대신 오브젝트 비활성화
+        gameObject.SetActive(false);
+    }
+
+    void OnDisable()
+    {
+        // 풀러에게 오브젝트 반환 요청
+        if (ObjectPooler.Instance != null)
+        {
+            ObjectPooler.Instance.ReturnToPool("Enemy", gameObject);
+        }
     }
 }
