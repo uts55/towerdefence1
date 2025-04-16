@@ -420,13 +420,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 789f6891228534d4cb505f116361f1ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pools:
-  - tag: Enemy
-    prefab: {fileID: 1503353350018423474, guid: 2e8865e458b2b8c408e472341f1b1b41, type: 3}
-    size: 100
-  - tag: Projectile
-    prefab: {fileID: 584266613655687292, guid: c8ce6c22a7a04a04ba25ed54d82396a5, type: 3}
-    size: 100
+  enemyPrefab: {fileID: 1503353350018423474, guid: 2e8865e458b2b8c408e472341f1b1b41, type: 3}
+  projectilePrefab: {fileID: 584266613655687292, guid: c8ce6c22a7a04a04ba25ed54d82396a5, type: 3}
+  enemyPoolSize: 50
+  projectilePoolSize: 100
 --- !u!4 &363126933
 Transform:
   m_ObjectHideFlags: 0

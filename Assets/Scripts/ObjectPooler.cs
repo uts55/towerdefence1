@@ -14,22 +14,22 @@ public class ObjectPooler : MonoBehaviour
         else
         {
             Instance = this;
-            // DontDestroyOnLoad(gameObject); // 필요하다면 주석 해제
+            // 스크립트 실행 순서 설정이 여전히 중요!
+            // 코드에서 풀을 초기화하더라도 Awake가 먼저 완료되어야 함
+            InitializePools(); // Awake에서 풀 초기화
         }
-
-        InitializePools(); // Awake에서 풀 초기화
     }
 
-    // 각 풀의 정보를 담을 클래스 또는 구조체
-    [System.Serializable] // Inspector에 노출시키기 위함
-    public class Pool
-    {
-        public string tag;      // 풀을 식별할 태그 (예: "Enemy", "Projectile")
-        public GameObject prefab;   // 풀링할 프리팹
-        public int size;       // 초기 풀 크기
-    }
+    // --- Inspector에서 설정할 프리팹 참조 ---
+    [Header("Prefabs to Pool")] // Inspector에서 보기 좋게 그룹화
+    public GameObject enemyPrefab;
+    public GameObject projectilePrefab;
+    // 필요하다면 다른 프리팹들도 추가 (예: public GameObject experienceGemPrefab;)
 
-    public List<Pool> pools; // Inspector에서 설정할 풀 목록
+    [Header("Pool Sizes")]
+    public int enemyPoolSize = 50;
+    public int projectilePoolSize = 100;
+    // 다른 프리팹 풀 크기 추가
 
     // 실제 풀 데이터를 저장할 딕셔너리 (태그, 비활성 오브젝트 큐)
     private Dictionary<string, Queue<GameObject>> poolDictionary;
@@ -39,23 +39,45 @@ public class ObjectPooler : MonoBehaviour
     {
         poolDictionary = new Dictionary<string, Queue<GameObject>>();
 
-        foreach (Pool pool in pools)
+        // --- 코드에서 직접 풀 정보 정의 및 생성 ---
+
+        // 1. Enemy Pool
+        if (enemyPrefab != null) // 프리팹이 할당되었는지 확인
         {
-            Queue<GameObject> objectQueue = new Queue<GameObject>();
-
-            for (int i = 0; i < pool.size; i++)
-            {
-                GameObject obj = Instantiate(pool.prefab);
-                obj.SetActive(false); // 비활성 상태로 생성
-                objectQueue.Enqueue(obj); // 큐에 추가
-
-                // (선택적) 생성된 오브젝트를 Pooler 자식으로 넣어 Hierarchy 정리
-                 obj.transform.SetParent(this.transform);
-            }
-
-            poolDictionary.Add(pool.tag, objectQueue); // 딕셔너리에 풀 추가
-            Debug.Log($"Pool '{pool.tag}' initialized with {pool.size} objects.");
+            CreatePool("Enemy", enemyPrefab, enemyPoolSize);
         }
+        else Debug.LogError("[ObjectPooler] Enemy Prefab is not assigned in the Inspector!");
+
+        // 2. Projectile Pool
+        if (projectilePrefab != null)
+        {
+            CreatePool("Projectile", projectilePrefab, projectilePoolSize);
+        }
+        else Debug.LogError("[ObjectPooler] Projectile Prefab is not assigned in the Inspector!");
+
+        // 3. 다른 풀이 있다면 여기에 추가
+        // if (experienceGemPrefab != null) { CreatePool("ExperienceGem", experienceGemPrefab, experienceGemPoolSize); }
+
+        // --- 코드 정의 끝 ---
+
+        Debug.Log("[ObjectPooler] All pools initialized via code.");
+    }
+
+    // 풀 생성 로직을 별도 함수로 분리 (코드 가독성 향상)
+    void CreatePool(string tag, GameObject prefab, int size)
+    {
+        Queue<GameObject> objectQueue = new Queue<GameObject>();
+
+        for (int i = 0; i < size; i++)
+        {
+            GameObject obj = Instantiate(prefab);
+            obj.SetActive(false); // 비활성 상태로 생성
+            objectQueue.Enqueue(obj); // 큐에 추가
+            obj.transform.SetParent(this.transform); // Hierarchy 정리
+        }
+
+        poolDictionary.Add(tag, objectQueue); // 딕셔너리에 풀 추가
+        Debug.Log($"[ObjectPooler] Pool '{tag}' initialized with {size} objects (Prefab: {prefab.name}).");
     }
 
     // 풀에서 오브젝트를 가져오는 함수 (활성화)
@@ -120,17 +142,17 @@ public class ObjectPooler : MonoBehaviour
             // {
             //     Debug.Log($"Existing pool tag: {key}");
             // }
-            //Destroy(objectToReturn); // 풀이 없으면 그냥 파괴
+            Destroy(objectToReturn); // 풀이 없으면 그냥 파괴
             return;
         }
 
         // 오브젝트가 이미 비활성화 상태여야 함 (보통 OnDisable에서 호출되므로)
-        if (objectToReturn.activeSelf)
-        {
+        // if (objectToReturn.activeSelf)
+        // {
              // 만약의 경우를 대비해 비활성화
              // objectToReturn.SetActive(false);
              // Debug.LogWarning($"Object '{objectToReturn.name}' returned to pool '{tag}' while active. Deactivating.");
-        }
+        // }
 
         // 해당 태그의 큐에 오브젝트를 다시 추가
         poolDictionary[tag].Enqueue(objectToReturn);
